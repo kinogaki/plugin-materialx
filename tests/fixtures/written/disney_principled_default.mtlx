@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<materialx version="1.39" colorspace="lin_rec709">
+  <nodegraph name="NG_DisneyPrincipled_Default">
+    <disney_principled name="SR_default" type="surfaceshader">
+      <input name="baseColor" type="color3" value="0.16, 0.16, 0.16" />
+    </disney_principled>
+    <output name="surfaceshader" type="surfaceshader" nodename="SR_default" />
+  </nodegraph>
+  <surfacematerial name="DisneyPrincipled_Default" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodegraph="NG_DisneyPrincipled_Default" output="surfaceshader" />
+  </surfacematerial>
+</materialx>

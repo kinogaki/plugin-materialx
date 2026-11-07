@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<materialx version="1.39" colorspace="lin_rec709">
+  <nodegraph name="NG_Default">
+    <gltf_pbr name="SR_default" type="surfaceshader">
+      <input name="occlusion" type="float" value="0" />
+      <input name="iridescence_ior" type="float" value="1.3" />
+      <input name="iridescence_thickness" type="float" value="300" />
+      <input name="attenuation_distance" type="float" value="100000" />
+      <input name="attenuation_color" type="color3" value="0, 0, 0" />
+    </gltf_pbr>
+    <output name="surfaceshader" type="surfaceshader" nodename="SR_default" />
+  </nodegraph>
+  <surfacematerial name="Default" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodegraph="NG_Default" output="surfaceshader" />
+  </surfacematerial>
+</materialx>

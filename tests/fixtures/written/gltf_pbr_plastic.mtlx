@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<materialx version="1.39" colorspace="lin_rec709">
+  <nodegraph name="NG_PBR_Plastic">
+    <gltf_pbr name="SR_plastic" type="surfaceshader">
+      <input name="base_color" type="color3" value="0.104704, 0.241883, 0.818" />
+      <input name="metallic" type="float" value="0" />
+      <input name="roughness" type="float" value="0.324675" />
+    </gltf_pbr>
+    <output name="surfaceshader" type="surfaceshader" nodename="SR_plastic" />
+  </nodegraph>
+  <surfacematerial name="PBR_Plastic" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodegraph="NG_PBR_Plastic" output="surfaceshader" />
+  </surfacematerial>
+</materialx>

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<materialx version="1.39" colorspace="lin_rec709">
+  <nodegraph name="NG_Light_Bulb">
+    <open_pbr_surface name="open_pbr_surface_surfaceshader" type="surfaceshader">
+      <input name="emission_luminance" type="float" value="10000" />
+      <input name="emission_color" type="color3" value="1, 0.415, 0.099" />
+    </open_pbr_surface>
+    <output name="surfaceshader" type="surfaceshader" nodename="open_pbr_surface_surfaceshader" />
+  </nodegraph>
+  <surfacematerial name="Light_Bulb" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodegraph="NG_Light_Bulb" output="surfaceshader" />
+  </surfacematerial>
+</materialx>

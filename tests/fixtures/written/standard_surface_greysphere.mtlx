@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<materialx version="1.39" colorspace="lin_rec709">
+  <nodegraph name="NG_Greysphere">
+    <standard_surface name="SR_greysphere" type="surfaceshader">
+      <input name="base_color" type="color3" value="0.18, 0.18, 0.18" />
+      <input name="specular_roughness" type="float" value="0.7" />
+    </standard_surface>
+    <output name="surfaceshader" type="surfaceshader" nodename="SR_greysphere" />
+  </nodegraph>
+  <surfacematerial name="Greysphere" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodegraph="NG_Greysphere" output="surfaceshader" />
+  </surfacematerial>
+</materialx>

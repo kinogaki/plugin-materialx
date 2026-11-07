@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<materialx version="1.39" colorspace="lin_rec709">
+  <nodegraph name="NG_Default">
+    <open_pbr_surface name="open_pbr_surface_surfaceshader" type="surfaceshader">
+      <input name="base_color" type="color3" value="0.8, 0.8, 0.8" />
+      <input name="specular_roughness" type="float" value="0.3" />
+      <input name="subsurface_color" type="color3" value="0.8, 0.8, 0.8" />
+      <input name="coat_ior" type="float" value="1.6" />
+      <input name="thin_film_ior" type="float" value="1.4" />
+    </open_pbr_surface>
+    <output name="surfaceshader" type="surfaceshader" nodename="open_pbr_surface_surfaceshader" />
+  </nodegraph>
+  <surfacematerial name="Default" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodegraph="NG_Default" output="surfaceshader" />
+  </surfacematerial>
+</materialx>

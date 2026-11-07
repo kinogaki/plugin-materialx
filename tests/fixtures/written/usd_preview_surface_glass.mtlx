@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<materialx version="1.39" colorspace="lin_rec709">
+  <nodegraph name="NG_USD_Glass">
+    <UsdPreviewSurface name="SR_glass" type="surfaceshader">
+      <input name="diffuseColor" type="color3" value="0, 0, 0" />
+      <input name="roughness" type="float" value="0.01" />
+      <input name="opacity" type="float" value="0" />
+      <input name="ior" type="float" value="1.52" />
+    </UsdPreviewSurface>
+    <output name="surfaceshader" type="surfaceshader" nodename="SR_glass" />
+  </nodegraph>
+  <surfacematerial name="USD_Glass" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodegraph="NG_USD_Glass" output="surfaceshader" />
+  </surfacematerial>
+</materialx>

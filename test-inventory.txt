@@ -1,0 +1,7 @@
+# Every test of this repository: <package>/<target> <kind> <name>.
+# Written by `python3 tools/check_all.py --inventory`; every check compares its tests with it.
+kinogaki-materialx/documents hand hand_run_the_examples_read_within_their_budget
+kinogaki-materialx/documents test an_included_document_s_materials_and_definitions_read
+kinogaki-materialx/documents test colors_read_into_the_working_space_and_write_in_the_document_s
+kinogaki-materialx/documents test image_nodes_write_as_files_beside_the_document_and_read_back
+kinogaki-materialx/documents test the_examples_write_back_as_the_same_materials
