@@ -7,6 +7,7 @@
 use kinogaki_materialx::MaterialX;
 use kinogaki_render_api::MaterialNetwork;
 use kinogaki_studio_api::color::ColorService;
+use kinogaki_studio_api::format::options;
 use kinogaki_studio_api::geometry::image::{EmbeddedFile, ImageColor, ImageFile, ImageSource};
 use kinogaki_studio_api::image_files::{IMAGE_NODE, image_node, image_source};
 use kinogaki_studio_api::network::{NetworkSeed, NewNode};
@@ -110,7 +111,10 @@ fn the_examples_write_back_as_the_same_materials() {
             let file = file.unwrap().path();
             std::fs::copy(&file, dir.join(file.file_name().unwrap())).unwrap();
         }
-        let (held, said) = read(&dir.join(&name));
+        // MaterialX's repository keeps the examples' pictures three folders
+        // up, outside the folder of the files naming them.
+        let outside = [(options::OUTSIDE, Value::Bool(true))];
+        let (held, said) = read_with(&dir.join(&name), &outside, &Unconverted);
         // What MaterialX's examples hold that a Material doesn't.
         let expected = match &*name.to_string_lossy() {
             "standard_surface_chess_set.mtlx"
@@ -132,7 +136,7 @@ fn the_examples_write_back_as_the_same_materials() {
         let copy = dir.join("written.mtlx");
         let said = write_with(&copy, &held, &Unconverted);
         assert!(said.is_empty(), "{name:?}: {said:?}");
-        let (again, _) = read(&copy);
+        let (again, _) = read_with(&copy, &outside, &Unconverted);
         same(&held, &again, &name.to_string_lossy());
         let text = std::fs::read_to_string(&copy).unwrap();
         let expected = written.join(&name);
@@ -345,7 +349,7 @@ fn image_nodes_write_as_files_beside_the_document_and_read_back() {
         assert_eq!((b.color(), bytes(b)), (&ImageColor::Data, vec![4, 5, 6]));
         assert_eq!(matches!(b.file(), ImageFile::Embedded(_)), embed);
         let embedded = match a.file() {
-            ImageFile::Path(p) => Path::new(&**p) == wood,
+            ImageFile::Path(p) => Path::new(&**p) == wood.canonicalize().unwrap(),
             ImageFile::Embedded(e) => e.hash() == EmbeddedFile::new("x", vec![1, 2, 3]).hash(),
         };
         assert!(embedded, "{a:?}");

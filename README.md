@@ -8,7 +8,8 @@ The library crate is `kinogaki-materialx`; `plugin/` (`kinogaki-plugin-materialx
 
 One materials item, named after the file, which File ▸ Import makes a Material Library of:
 
-- **Materials:** each material node at the document's top level (`surfacematerial`, `volumematerial`) with every node it reads, keyed by its name and named by its `uiname` where it has one. `xi:include` reads the documents it names, relative to the one naming them.
+- **Materials:** each material node at the document's top level (`surfacematerial`, `volumematerial`) with every node it reads, keyed by its name and named by its `uiname` where it has one. `xi:include` reads the documents it names, relative to the one naming them, each once however often it is named, at most 256 deep.
+- **Files a document names** (includes and images) are found as every Studio format finds them: in the document's folder and the folders under it, regular files alone; anything else is listed in one warning, unless Read Files Outside the Folder is on.
 - **Graphs flattened:** a node graph's nodes are the material's (every node of a graph it reads from, read or not), and a node the document defines itself by a graph is that graph's nodes; the library's nodes stay nodes (Studio's MaterialX nodes, `kinogaki.mtlx.<node>` with their signature).
 - **The shown node:** a material node holding only a surface shows that surface, as a Material shows one; any other (a displacement, a back surface) shows itself.
 - **Values** as the inputs hold them; colors converted from the space the document says (`colorspace`, its own or an enclosing element's; `lin_rec709` where none says) into the project's working space.

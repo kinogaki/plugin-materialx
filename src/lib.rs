@@ -13,6 +13,10 @@
 //!   per distinct file and color space in a material: its path relative to
 //!   the document's folder (embedded with **Embed Textures**), its
 //!   `colorspace` the Image node's Color (none said: Auto; `raw`: Data).
+//!   Images and `xi:include`s are found as every format finds the files a
+//!   file names (the SDK's `format::files::Named`): in the document's folder
+//!   and below unless **Read Files Outside the Folder** is on, regular files
+//!   alone; a document is included once, however often it is named.
 //!   Written, an Image node reading a file names its path relative to the
 //!   document; one holding an embedded file writes it beside the document
 //!   (`<stem>_textures/`); one reading a result is left out, said.
@@ -77,11 +81,15 @@ impl FileFormat for MaterialX {
         std::slice::from_ref(&*MATERIALS)
     }
     fn options(&self) -> FormatOptions {
-        FormatOptions::from([(options::EMBED.to_owned(), Value::Bool(false))])
+        FormatOptions::from([
+            (options::EMBED.to_owned(), Value::Bool(false)),
+            (options::OUTSIDE.to_owned(), Value::Bool(false)),
+        ])
     }
     fn schema(&self, chosen: &FormatOptions, _: Purpose) -> Schema {
-        let embed = options::option(chosen, options::EMBED, Value::bool).unwrap_or(false);
-        options::embed(Schema::default(), embed)
+        let on = |name| options::option(chosen, name, Value::bool).unwrap_or(false);
+        let schema = options::embed(Schema::default(), on(options::EMBED));
+        options::outside(schema, on(options::OUTSIDE))
     }
     fn read(
         &self,

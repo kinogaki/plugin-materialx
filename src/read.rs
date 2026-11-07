@@ -1,11 +1,11 @@
 //! A document's materials as Studio's (the crate docs say how).
 use crate::DOCUMENT_SPACE;
-use kinogaki_mtlx::{Bound, Document, Material, Type};
+use kinogaki_mtlx::{Bound, Document, Included, Material, Type};
 use kinogaki_render_api::material::Input as Port;
 use kinogaki_render_api::material::mtlx::{def, value};
 use kinogaki_studio_api::color::ColorService;
-use kinogaki_studio_api::format::options;
-use kinogaki_studio_api::geometry::image::{EmbeddedFile, ImageColor, ImageFile, ImageSource};
+use kinogaki_studio_api::format::files::Named;
+use kinogaki_studio_api::geometry::image::{ImageColor, ImageSource};
 use kinogaki_studio_api::image_files::image_node;
 use kinogaki_studio_api::network::{NetworkSeed, NewNode};
 use kinogaki_studio_api::standard::{self, ImportedMaterial, Materials};
@@ -27,17 +27,19 @@ pub(crate) fn read(
         .map_err(|_| Error::invalid(format!("{input}: not UTF-8 text")))?;
     let mut document: Document =
         (text.parse()).map_err(|why: String| Error::invalid(format!("{input}: {why}")))?;
-    let folder = input.path().and_then(Path::parent);
-    let mut said = document.include(&mut |href| match folder {
-        Some(folder) => std::fs::read_to_string(folder.join(href)).map_err(|e| e.to_string()),
-        None => Err("a document read from memory names no folder".into()),
+    let named = Named::new(input, chosen, reading);
+    let mut unread = Vec::new();
+    let identity = input.path().and_then(|p| p.canonicalize().ok());
+    let identity = identity.map(|p| p.display().to_string());
+    let mut said = document.include(identity.as_deref(), &mut |href, within| {
+        include(&named, href, within, &mut unread)
     });
+    said.append(&mut unread);
     reading.check()?;
     let (materials, left) = document.materials();
     said.extend(left);
     let mut read = Read {
-        folder,
-        embed: options::option(chosen, options::EMBED, Value::bool)?,
+        named: &named,
         colors: reading.colors,
         said,
     };
@@ -49,17 +51,44 @@ pub(crate) fn read(
         materials,
         images: Vec::new(),
     };
+    let mut warnings: Vec<Diagnostic> = read.said.into_iter().map(Diagnostic::warning).collect();
+    warnings.extend(named.warnings());
     Ok(Imported {
         items: vec![FileItem::top(name, standard::materials().wrap(held))],
-        warnings: read.said.into_iter().map(Diagnostic::warning).collect(),
+        warnings,
     })
+}
+
+/// The document `href` names, relative to the document at `within` (none:
+/// the one read): its canonical path, which is its identity, and its text;
+/// none when it is out of reach (`named`'s warnings say so) or doesn't
+/// read (said in `unread`).
+fn include(
+    named: &Named,
+    href: &str,
+    within: Option<&str>,
+    unread: &mut Vec<String>,
+) -> Option<Included> {
+    let from = within.and_then(|w| Path::new(w).parent());
+    let path = named.file(href, from)?;
+    let text = (named.read(&path).map_err(|e| e.to_string()))
+        .and_then(|bytes| String::from_utf8(bytes).map_err(|_| "not UTF-8 text".into()));
+    match text {
+        Ok(text) => Some(Included {
+            identity: path.display().to_string(),
+            text,
+        }),
+        Err(why) => {
+            unread.push(format!("{href}: {why}; what it holds is left out"));
+            None
+        }
+    }
 }
 
 /// What a read holds while it reads.
 struct Read<'a> {
-    /// The document's folder, which its files' paths are relative to.
-    folder: Option<&'a Path>,
-    embed: bool,
+    /// The files the document names, which its images are read through.
+    named: &'a Named,
     colors: &'a dyn ColorService,
     /// What was left out or approximated, in words.
     said: Vec<String>,
@@ -122,7 +151,9 @@ impl Read<'_> {
                             if file.is_empty() {
                                 continue;
                             }
-                            let source = self.source(file, colorspace.as_deref());
+                            let Some(source) = self.source(file, colorspace.as_deref()) else {
+                                continue;
+                            };
                             let image = match images.iter().find(|(s, _)| *s == source) {
                                 Some((_, image)) => *image,
                                 None => {
@@ -175,35 +206,20 @@ impl Read<'_> {
     }
 
     /// What file `file` (relative to the document's folder) in color space
-    /// `colorspace` reads.
-    fn source(&mut self, file: &str, colorspace: Option<&str>) -> ImageSource {
+    /// `colorspace` reads; none for a file out of reach, which the read's
+    /// warnings list.
+    fn source(&mut self, file: &str, colorspace: Option<&str>) -> Option<ImageSource> {
         if file.contains("<UDIM>") || file.contains("<UVTILE>") {
             self.said
                 .push(format!("{file}: a tile set, read as the one file it names"));
         }
-        let path = match self.folder {
-            Some(folder) if Path::new(file).is_relative() => folder.join(file),
-            _ => file.into(),
-        };
-        let mut read = ImageFile::Path(Arc::from(path.display().to_string()));
-        if self.embed {
-            match std::fs::read(&path) {
-                Ok(bytes) => {
-                    let name =
-                        (path.file_name()).map_or_else(|| file.into(), |n| n.to_string_lossy());
-                    read = ImageFile::Embedded(EmbeddedFile::new(&name, bytes));
-                }
-                Err(e) => self
-                    .said
-                    .push(format!("{}: {e}, kept as a path", path.display())),
-            }
-        }
+        let read = self.named.image(file, None)?;
         let color = match colorspace {
             None => ImageColor::Auto,
             Some(raw) if raw.eq_ignore_ascii_case("raw") => ImageColor::Data,
             Some(space) => ImageColor::Space(Arc::from(space)),
         };
-        ImageSource::new(read, color)
+        Some(ImageSource::new(read, color))
     }
 
     /// `held`, a color in `space`, in the working space.
