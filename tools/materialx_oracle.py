@@ -1,18 +1,19 @@
-"""MaterialX's own reading of what this plugin writes: each example document
-(tests/fixtures/examples) and the document the plugin writes of it
-(tests/fixtures/written) read by MaterialX, the written one validated, and
-both compared material by material: the nodes a document defines itself
-flattened (MaterialX's flattenSubgraphs), every node a material reads, through its
-graphs and their interfaces (MaterialX's traversal), by category,
-definition and every input's value (its definition's where it holds none),
-names aside. A local oracle,
-never a dependency: it needs MaterialX's Python module (1.39.5).
+"""MaterialX's own reading of what this plugin writes: every document in
+each WRITTEN folder read by MaterialX and validated, every node its
+materials read resolved to a definition, and one the plugin wrote of an
+example (the document of its name under EXAMPLES/*/) compared with
+that example material by material: the nodes a document defines itself
+flattened (MaterialX's flattenSubgraphs), every node a material reads,
+through its graphs and their interfaces (MaterialX's traversal), by
+category, definition and every input's value (its definition's where it
+holds none), names aside. A local oracle, never a dependency: it needs
+MaterialX 1.39.5's Python module, which tools/make_materialx.py installs.
 
-    python3 tools/materialx_oracle.py tests/fixtures/examples tests/fixtures/written
+    python3 tools/materialx_oracle.py tests/fixtures/examples tests/fixtures/written [WRITTEN...]
 
-Prints one line a document and exits 1 when one differs or doesn't validate.
+Prints one line a document and exits 1 when one doesn't validate, reads a
+node of no definition or differs from its example, or a folder holds none.
 """
-import os
 import pathlib
 import sys
 
@@ -76,6 +77,11 @@ def nodes(material):
                 given = up.getParent().getInput(given.getInterfaceName())
             if given is not None and (given.getConnectedNode() or given.hasNodeGraphString()):
                 held = 'wired'
+            elif declared.hasDefaultGeomPropString():
+                # An input reading the geometry where nothing is wired: the
+                # plugin leaves a value on it out, and says so, as Studio's
+                # port takes a wire alone.
+                held = None
             elif given is not None and given.hasValueString():
                 held = value(given)
             elif declared.hasValueString():
@@ -95,27 +101,38 @@ def materials(doc):
 
 
 def main():
-    examples, written = (pathlib.Path(a) for a in sys.argv[1:3])
-    # The standard libraries beside the module, as its wheel lays them out.
+    examples, folders = pathlib.Path(sys.argv[1]), [pathlib.Path(a) for a in sys.argv[2:]]
+    # The standard libraries the module carries.
     libraries = mx.createDocument()
-    beside = mx.FileSearchPath(os.path.join(os.path.dirname(mx.__file__), 'materialx'))
-    mx.loadLibraries(['libraries'], beside, libraries)
+    mx.loadLibraries(mx.getDefaultDataLibraryFolders(), mx.getDefaultDataSearchPath(), libraries)
+    if not libraries.getNodeDefs():
+        sys.exit(f'no MaterialX libraries in {mx.getDefaultDataSearchPath().asString()}')
+    originals = {path.name: path for path in examples.glob('*/*.mtlx')}
     failed = 0
-    for original in sorted(examples.glob('*/*.mtlx')):
-        copy = written / original.name
-        a, b = read(original, libraries), read(copy, libraries)
-        valid, why = b.validate()
-        ours, theirs = materials(a), materials(b)
-        differ = [name for name in ours if name not in theirs and name.replace(' ', '_') not in theirs]
-        for name, (seen, _) in ours.items():
-            other = theirs.get(name) or theirs.get(name.replace(' ', '_'))
-            if other and other[0] != seen:
-                differ.append(name)
-        ok = valid and not differ
-        failed += not ok
-        print(f"{'ok' if ok else 'DIFFERS'} {original.name}: {len(ours)} materials"
-              + ('' if valid else f'; invalid: {why.strip()}')
-              + (f'; differ: {differ}' if differ else ''))
+    for folder in folders:
+        written = sorted(folder.glob('*.mtlx'))
+        if not written:
+            print(f'NONE in {folder}')
+            failed += 1
+        for path in written:
+            doc = read(path, libraries)
+            valid, why = doc.validate()
+            theirs = materials(doc)
+            unresolved = sorted({n[0] for seen, _ in theirs.values() for n in seen if n[1] == '?'})
+            differ = []
+            if path.name in originals:
+                ours = materials(read(originals[path.name], libraries))
+                for name, (seen, _) in ours.items():
+                    other = theirs.get(name) or theirs.get(name.replace(' ', '_'))
+                    if other is None or other[0] != seen:
+                        differ.append(name)
+            ok = valid and not unresolved and not differ
+            failed += not ok
+            print(f"{'ok' if ok else 'FAILED'} {path}: {len(theirs)} materials"
+                  + ('' if path.name in originals else ', no example')
+                  + ('' if valid else f'; invalid: {why.strip()}')
+                  + (f'; no definition: {unresolved}' if unresolved else '')
+                  + (f'; differ: {differ}' if differ else ''))
     sys.exit(1 if failed else 0)
 
 

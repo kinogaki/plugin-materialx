@@ -48,7 +48,7 @@ One document of every Material the materials item holds:
 - lengths written in millimetres saying their unit and read into centimetres (a texture's factor too), a unit said on a node, and a document saying none;
 - Image nodes reading a file, an embedded file and a result, written and read back as the same images, with and without Embed Textures.
 
-`tools/materialx_oracle.py` reads every example and its written document with MaterialX 1.39.5's own Python module, validates the written one, and compares them material by material (every node a material reads through its graphs, by category, definition and values, names aside). It runs locally and is never a dependency.
+`tools/materialx_oracle.py` reads documents with MaterialX 1.39.5's own Python module: it validates each written one, checks that every node its materials read resolves to a definition, and compares one written of an example with that example material by material (every node a material reads through its graphs, by category, definition and values, names aside; a value on an input reading the geometry, which the format leaves out and says, aside). `tools/make_materialx.py FOLDER` makes the module's virtual environment: PyPI's MaterialX 1.39.5 wheel for macOS arm64, refused unless its SHA-256 is one the script pins. The hand test `hand_run_materialx_validates_every_document_the_format_writes` runs the oracle over `tests/fixtures/written` and over the documents the round trips write (Image nodes, lengths in millimetres, Kinogaki's definitions); in Studio's tree, `tools/fetch_data.py` makes the environment in `~/.kinogaki/data/materialx` and the test runner names its Python to the test in `MATERIALX_PYTHON`. The module is never a dependency.
 
 ## Building
 

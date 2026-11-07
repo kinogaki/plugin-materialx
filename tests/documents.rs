@@ -1,9 +1,10 @@
 //! MaterialX documents through the format: MaterialX's example materials
 //! (1.39.5, Apache-2.0, `tests/fixtures/examples`) read, written and read
 //! again as the same materials, and written as `tests/fixtures/written`
-//! holds (`tools/materialx_oracle.py` checks those in MaterialX itself);
-//! included documents read; colors converted both ways; Image nodes written
-//! as files and read back as the same images.
+//! holds; included documents read; colors converted both ways; Image nodes
+//! written as files and read back as the same images; lengths saying their
+//! unit. A hand test has MaterialX itself validate what the format writes
+//! (`tools/materialx_oracle.py`).
 use kinogaki_materialx::MaterialX;
 use kinogaki_render_api::MaterialNetwork;
 use kinogaki_studio_api::color::ColorService;
@@ -50,13 +51,19 @@ fn read(path: &Path) -> (Materials, Vec<Diagnostic>) {
     read_with(path, &[], &Unconverted)
 }
 
-/// `held` written at `path`, colors through `colors`: the writer's warnings.
-fn write_with(path: &Path, held: &Materials, colors: &dyn ColorService) -> Vec<Diagnostic> {
+/// `held` written at `path` from a project of `units`, colors through
+/// `colors`: the writer's warnings.
+fn write_with(
+    path: &Path,
+    held: &Materials,
+    units: Units,
+    colors: &dyn ColorService,
+) -> Vec<Diagnostic> {
     let items = [FileItem::top(
         "Materials",
         standard::materials().wrap(held.clone()),
     )];
-    let writing = Writing::new(Units::METERS, colors);
+    let writing = Writing::new(units, colors);
     let writer = MaterialX.writer().expect("it writes");
     writer
         .write(path, &items, &writing, &FormatOptions::new())
@@ -134,7 +141,7 @@ fn the_examples_write_back_as_the_same_materials() {
         );
         assert!(!held.materials.is_empty(), "{name:?}");
         let copy = dir.join("written.mtlx");
-        let said = write_with(&copy, &held, &Unconverted);
+        let said = write_with(&copy, &held, Units::METERS, &Unconverted);
         assert!(said.is_empty(), "{name:?}: {said:?}");
         let (again, _) = read_with(&copy, &outside, &Unconverted);
         same(&held, &again, &name.to_string_lossy());
@@ -256,18 +263,15 @@ fn colors_read_into_the_working_space_and_write_in_the_document_s() {
         Value::Number(0.5),
         "a float isn't a color"
     );
-    write_with(&dir.join("again.mtlx"), &held, &Doubled);
+    write_with(&dir.join("again.mtlx"), &held, Units::METERS, &Doubled);
     let text = std::fs::read_to_string(dir.join("again.mtlx")).unwrap();
     assert!(text.contains("value=\"0.25, 0.125, 0.5\""), "{text}");
 }
 
-/// Wave 4.5: a material's Image nodes reading a file, an embedded file and
-/// a result: the file named by its path with its color space, the embedded
-/// one written beside the document, the result left out and said; read
-/// back, the same images.
-#[test]
-fn image_nodes_write_as_files_beside_the_document_and_read_back() {
-    let dir = scratch("images");
+/// A single-sided material whose Image nodes read a file (`dir`'s
+/// `maps/wood.png`, made here, in `srgb_texture`), an embedded file (raw)
+/// and a result.
+fn oiled_wood(dir: &Path) -> Materials {
     std::fs::create_dir_all(dir.join("maps")).unwrap();
     let wood = dir.join("maps/wood.png");
     std::fs::write(&wood, [1, 2, 3]).unwrap();
@@ -286,7 +290,7 @@ fn image_nodes_write_as_files_beside_the_document_and_read_back() {
     let srgb = ImageColor::Space("srgb_texture".into());
     let file = ImageSource::new(ImageFile::Path(wood.display().to_string().into()), srgb);
     let packed = EmbeddedFile::new("rough.png", vec![4, 5, 6]);
-    let held = ImageSource::new(ImageFile::Embedded(packed.clone()), ImageColor::Data);
+    let held = ImageSource::new(ImageFile::Embedded(packed), ImageColor::Data);
     let images = [(&file, base), (&held, rough)];
     for (source, into) in images {
         let image = inside.node(image_node::reading(source));
@@ -303,12 +307,22 @@ fn image_nodes_write_as_files_beside_the_document_and_read_back() {
         standard: None,
         double_sided: false,
     };
-    let materials = Materials {
+    Materials {
         materials: vec![m],
         images: Vec::new(),
-    };
+    }
+}
+
+/// Wave 4.5: a material's Image nodes reading a file, an embedded file and
+/// a result: the file named by its path with its color space, the embedded
+/// one written beside the document, the result left out and said; read
+/// back, the same images.
+#[test]
+fn image_nodes_write_as_files_beside_the_document_and_read_back() {
+    let dir = scratch("images");
+    let wood = dir.join("maps/wood.png");
     let path = dir.join("wood.mtlx");
-    let said = write_with(&path, &materials, &Unconverted);
+    let said = write_with(&path, &oiled_wood(&dir), Units::METERS, &Unconverted);
     assert!(
         said.iter().any(|w| w.message.contains("reading a result")),
         "{said:?}"
@@ -345,7 +359,8 @@ fn image_nodes_write_as_files_beside_the_document_and_read_back() {
             ImageFile::Path(p) => std::fs::read(&**p).unwrap(),
             ImageFile::Embedded(e) => e.bytes().to_vec(),
         };
-        assert_eq!((a.color(), bytes(a)), (file.color(), vec![1, 2, 3]));
+        let srgb = ImageColor::Space("srgb_texture".into());
+        assert_eq!((a.color(), bytes(a)), (&srgb, vec![1, 2, 3]));
         assert_eq!((b.color(), bytes(b)), (&ImageColor::Data, vec![4, 5, 6]));
         assert_eq!(matches!(b.file(), ImageFile::Embedded(_)), embed);
         let embedded = match a.file() {
@@ -383,13 +398,9 @@ fn held(held: &Materials, node: &str, input: &str) -> Value {
         .unwrap()
 }
 
-#[test]
-fn lengths_say_their_unit_and_read_into_the_projects() {
-    let dir = scratch("lengths");
-    let millimetres = Units::new(0.001, kinogaki_studio_api::UpAxis::Y).unwrap();
-    let centimetres = Units::new(0.01, kinogaki_studio_api::UpAxis::Y).unwrap();
-    // glTF's thickness held, and OpenPBR's transmission depth a texture's
-    // factor drives, in millimetres.
+/// OpenPBR's subsurface radius held, 2, and its transmission depth a glTF
+/// texture's factor drives, 3: lengths, in the project's unit.
+fn glass() -> Materials {
     let mut inside = NetworkSeed::default();
     let surface = inside.node(
         NewNode::materialx("ND_open_pbr_surface_surfaceshader")
@@ -410,18 +421,19 @@ fn lengths_say_their_unit_and_read_into_the_projects() {
         standard: None,
         double_sided: true,
     };
-    let held_mm = Materials {
+    Materials {
         materials: vec![glass],
         images: Vec::new(),
-    };
+    }
+}
+
+#[test]
+fn lengths_say_their_unit_and_read_into_the_projects() {
+    let dir = scratch("lengths");
+    let millimetres = Units::new(0.001, kinogaki_studio_api::UpAxis::Y).unwrap();
+    let centimetres = Units::new(0.01, kinogaki_studio_api::UpAxis::Y).unwrap();
     let path = dir.join("glass.mtlx");
-    let items = [FileItem::top(
-        "Materials",
-        standard::materials().wrap(held_mm),
-    )];
-    let writer = MaterialX.writer().unwrap();
-    let writing = Writing::new(millimetres, &Unconverted);
-    (writer.write(&path, &items, &writing, &FormatOptions::new())).unwrap();
+    write_with(&path, &glass(), millimetres, &Unconverted);
     let text = std::fs::read_to_string(&path).unwrap();
     for said in [
         r#"name="subsurface_radius" type="float" value="2" unittype="distance" unit="millimeter""#,
@@ -477,6 +489,110 @@ fn a_unit_on_a_node_holds_for_its_lengths_and_none_leaves_them_as_read() {
     std::fs::write(&path, document("")).unwrap();
     let back = read_in(&path, millimetres);
     assert_eq!(held(&back, "gltf_pbr", "thickness"), Value::Number(2.0));
+}
+
+/// Materials of Kinogaki's own definitions, which a document using them
+/// carries: a Phong Surface reading a glTF Sampler Image with its
+/// minification filter, and a Surface Unlit Cutout.
+fn kinogaki_definitions() -> Materials {
+    let mut phong = NetworkSeed::default();
+    let surface = phong.node(
+        NewNode::materialx("ND_kinogaki_phong_surface_surfaceshader")
+            .unwrap()
+            .with("shininess", 40.0)
+            .displayed(),
+    );
+    let sampler = phong.node(
+        NewNode::materialx("ND_kinogaki_gltf_image_color3")
+            .unwrap()
+            .with("minfilter", Value::Choice("nearest_mipmap_linear".into())),
+    );
+    phong.wire(sampler, "out", surface, "diffuse_color");
+    let mut cutout = NetworkSeed::default();
+    cutout.node(
+        NewNode::materialx("ND_kinogaki_surface_unlit")
+            .unwrap()
+            .with("alpha_mode", Value::Integer(1))
+            .displayed(),
+    );
+    let material = |name: &str, inside| ImportedMaterial {
+        key: name.into(),
+        name: name.into(),
+        inside,
+        standard: None,
+        double_sided: true,
+    };
+    Materials {
+        materials: vec![material("Phong", phong), material("Cutout", cutout)],
+        images: Vec::new(),
+    }
+}
+
+/// `tools/materialx_oracle.py` run by `python` over the documents in
+/// `folders`, MaterialX's examples beside them: whether it passed them, and
+/// what it said.
+fn oracle(python: &std::ffi::OsStr, folders: &[&Path]) -> (bool, String) {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let run = std::process::Command::new(python)
+        .arg("-I")
+        .arg(root.join("tools/materialx_oracle.py"))
+        .arg(root.join("tests/fixtures/examples"))
+        .args(folders)
+        .output()
+        .expect("MaterialX's Python starts");
+    let said = String::from_utf8_lossy(&run.stdout);
+    let said = format!("{said}{}", String::from_utf8_lossy(&run.stderr));
+    println!("{said}");
+    (run.status.success(), said)
+}
+
+/// MaterialX's own reading of what the format writes:
+/// `tools/materialx_oracle.py`, run by MaterialX 1.39.5's Python
+/// (`MATERIALX_PYTHON`, which Studio's `tools/fetch_data.py` makes),
+/// validates every written fixture and compares it with its example, and
+/// validates the documents the round trips write, written here: Image
+/// nodes, lengths in millimetres and Kinogaki's definitions. It refuses a
+/// document MaterialX refuses, so its passes say something.
+#[test]
+#[ignore = "hand: against MaterialX's own Python module in MATERIALX_PYTHON"]
+fn hand_run_materialx_validates_every_document_the_format_writes() {
+    let python = std::env::var_os("MATERIALX_PYTHON")
+        .expect("MATERIALX_PYTHON: MaterialX's Python (Studio's tools/fetch_data.py)");
+    let dir = scratch("materialx");
+    let millimetres = Units::new(0.001, kinogaki_studio_api::UpAxis::Y).unwrap();
+    let documents = [
+        ("wood", oiled_wood(&dir), Units::METERS),
+        ("glass", glass(), millimetres),
+        ("kinogaki", kinogaki_definitions(), Units::METERS),
+    ];
+    for (name, held, units) in documents {
+        let path = dir.join(format!("{name}.mtlx"));
+        write_with(&path, &held, units, &Unconverted);
+    }
+    let written = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/written");
+    let (passed, said) = oracle(&python, &[&written, &dir]);
+    assert!(passed, "MaterialX refuses:\n{said}");
+    // Refused: a node of no definition, a unit MaterialX doesn't define.
+    let refused = dir.join("refused");
+    std::fs::create_dir_all(&refused).unwrap();
+    let document = r#"<?xml version="1.0"?>
+<materialx version="1.39">
+  <brass name="metal" type="surfaceshader" />
+  <open_pbr_surface name="glass" type="surfaceshader">
+    <input name="transmission_depth" type="float" value="2" unittype="distance" unit="parsec" />
+  </open_pbr_surface>
+  <surfacematerial name="Brass" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="metal" />
+  </surfacematerial>
+  <surfacematerial name="Glass" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="glass" />
+  </surfacematerial>
+</materialx>
+"#;
+    std::fs::write(refused.join("refused.mtlx"), document).unwrap();
+    let (passed, said) = oracle(&python, &[&refused]);
+    let named = said.contains("no definition: ['brass']") && said.contains("unit=\"parsec\"");
+    assert!(!passed && named, "{said}");
 }
 
 /// PLAN's budget: the whole example set reads in at most 50 ms (M4 Max,
