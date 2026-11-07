@@ -8,20 +8,17 @@ use kinogaki_studio_api::geometry::image::ImageFile;
 use kinogaki_studio_api::image_files::{IMAGE_NODE, image_source};
 use kinogaki_studio_api::standard::{self, Materials};
 use kinogaki_studio_api::{Error, FileFormat, FormatOptions, Imported, Input, Value};
+use kinogaki_studio_api_testing::format::Scratch;
 use kinogaki_studio_api_testing::read_hostile;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 
 /// Generous for a debug build: each read here takes milliseconds.
 const QUICK: Duration = Duration::from_secs(5);
 
 /// A folder of this test's own holding `files`, the first the document read.
-fn folder(name: &str, files: &[(&str, &str)]) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!(
-        "kinogaki-mtlx-hostile-{}-{name}",
-        std::process::id()
-    ));
-    _ = std::fs::remove_dir_all(&dir);
+fn folder(name: &str, files: &[(&str, &str)]) -> Scratch {
+    let dir = Scratch::new(&format!("mtlx-hostile-{name}"));
     for (path, text) in files {
         let path = dir.join(path);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -139,35 +136,44 @@ fn documents_including_the_next_twice_read_each_once() {
 }
 
 #[test]
-fn includes_and_images_outside_the_folder_are_left_unresolved() {
-    let nodes = "<xi:include href=\"/dev/zero\" /><xi:include href=\"../../../../etc/hosts\" /><image name=\"i\" type=\"color3\"><input name=\"file\" type=\"filename\" value=\"/etc/hosts\" /></image><image name=\"j\" type=\"color3\" fileprefix=\"../../../../\"><input name=\"file\" type=\"filename\" value=\"etc/hosts\" /></image><mix name=\"x\" type=\"color3\"><input name=\"fg\" type=\"color3\" nodename=\"i\" /><input name=\"bg\" type=\"color3\" nodename=\"j\" /></mix>";
-    let dir = folder("outside", &[("look.mtlx", &material(nodes, "x"))]);
+fn includes_and_images_outside_the_folder_are_read() {
+    let nodes = "<xi:include href=\"../shared/lib.mtlx\" /><image name=\"i\" type=\"color3\"><input name=\"file\" type=\"filename\" value=\"../maps/wood.png\" /></image><image name=\"j\" type=\"color3\" fileprefix=\"../\"><input name=\"file\" type=\"filename\" value=\"maps/oak.png\" /></image><mix name=\"x\" type=\"color3\"><input name=\"fg\" type=\"color3\" nodename=\"i\" /><input name=\"bg\" type=\"color3\" nodename=\"j\" /></mix>";
+    let lib = "<materialx version=\"1.39\"><constant name=\"shared\" type=\"float\" /></materialx>";
+    let files = [
+        ("scene/look.mtlx", material(nodes, "x")),
+        ("shared/lib.mtlx", lib.to_owned()),
+        ("maps/wood.png", "wood".to_owned()),
+        ("maps/oak.png", "oak".to_owned()),
+    ];
+    let files: Vec<(&str, &str)> = files.iter().map(|(p, t)| (*p, t.as_str())).collect();
+    let dir = folder("outside", &files);
     for embed in [false, true] {
         let set = [(options::EMBED, embed)];
-        let read = read(&dir.join("look.mtlx"), &set, ReadLimits::default()).unwrap();
-        assert!(images(&read).is_empty(), "{:?}", images(&read));
-        let said = said(&read);
-        for name in ["/dev/zero", "../../../../etc/hosts", "/etc/hosts"] {
-            assert!(said.contains(name), "{name}: {said}");
+        let read = read(&dir.join("scene/look.mtlx"), &set, ReadLimits::default()).unwrap();
+        assert!(said(&read).is_empty(), "{}", said(&read));
+        let mut found: Vec<String> = (images(&read).iter())
+            .map(|file| match file {
+                ImageFile::Path(path) => path.rsplit('/').next().unwrap().to_owned(),
+                ImageFile::Embedded(held) => String::from_utf8_lossy(held.bytes()).into_owned(),
+            })
+            .collect();
+        found.sort();
+        match embed {
+            false => assert_eq!(found, ["oak.png", "wood.png"]),
+            true => assert_eq!(found, ["oak", "wood"]),
         }
-        assert!(said.contains("Read Files Outside the Folder"), "{said}");
     }
 }
 
 #[test]
-fn devices_and_pipes_are_never_read_even_outside_the_folder() {
+fn devices_and_pipes_are_never_read() {
     let text = "<materialx version=\"1.39\"><xi:include href=\"/dev/zero\" /><xi:include href=\"pipe.mtlx\" /></materialx>";
     let dir = folder("devices", &[("look.mtlx", text)]);
     let made = std::process::Command::new("mkfifo")
         .arg(dir.join("pipe.mtlx"))
         .status();
     assert!(made.unwrap().success(), "a pipe to read");
-    let read = read(
-        &dir.join("look.mtlx"),
-        &[(options::OUTSIDE, true)],
-        ReadLimits::default(),
-    )
-    .unwrap();
+    let read = read(&dir.join("look.mtlx"), &[], ReadLimits::default()).unwrap();
     let said = said(&read);
     assert!(
         said.contains("not regular files, never read: /dev/zero, pipe.mtlx"),

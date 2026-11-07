@@ -1,56 +1,22 @@
 //! MaterialX documents (`.mtlx`), a format plugin: a document's materials
 //! read as Studio's Materials, MaterialX networks of nodes, and Materials
-//! written as one. The SDK's `kinogaki-mtlx` reads and writes the document
-//! and flattens its graphs ([`Document::materials`]); this crate converts
-//! between those materials and the SDK's, at its boundary:
-//!
-//! - **Values** take the types Studio's MaterialX nodes hold them in, numbers
-//!   at MaterialX's precision (32 bits); colors
-//!   are converted from the space the document says they are in (else
-//!   `lin_rec709`, MaterialX's working space) into the project's working
-//!   space, and written in `lin_rec709`.
-//! - **Files.** A `filename` value is an Image node wired into its input, one
-//!   per distinct file and color space in a material: its path relative to
-//!   the document's folder (embedded with **Embed Textures**), its
-//!   `colorspace` the Image node's Color (none said: Auto; `raw`: Data).
-//!   Images and `xi:include`s are found as every format finds the files a
-//!   file names (the SDK's `format::files::Named`): in the document's folder
-//!   and below unless **Read Files Outside the Folder** is on, regular files
-//!   alone; a document is included once, however often it is named.
-//!   Written, an Image node reading a file names its path relative to the
-//!   document; one holding an embedded file writes it beside the document
-//!   (`<stem>_textures/`); one reading a result is left out, said.
-//! - **The shown node.** A material node holding only a surface shows that
-//!   surface, as a Material shows one; any other material node shows itself.
-//!   Written, a surface shown alone is read by a `surfacematerial` named as
-//!   the Material.
-//! - **Lengths** (an input of a `Length`: glTF PBR's thickness, a
-//!   transmission depth) say their unit (`unittype="distance"
-//!   unit="millimeter"`): the project's, or metres where MaterialX names no
-//!   unit of its size. Read, a length the document says the unit of (on the
-//!   input, its node, its graph or the document) moves into the project's,
-//!   a texture's factor driving it too; one it says none of stays as read.
-//! - **Double Sided** is Kinogaki's `kinogaki:doublesided` on the material
-//!   node; the name a Material shows, its `uiname` where it isn't a valid
-//!   MaterialX name.
-//! - **An engine's material** is written as its standard form, an OpenPBR
-//!   Surface; a material nothing standard approximates is left out, said.
-//!
-//! [`Document::materials`]: kinogaki_mtlx::Document::materials
-mod read;
-mod write;
-
-use kinogaki_studio_api::format::options;
+//! written as one. The SDK reads and writes the document
+//! (`kinogaki-mtlx`'s `Document`) and converts between its materials and
+//! Studio's (`format::materialx`: values, colors, files, lengths, the shown
+//! node, Double Sided, an engine's material by its standard form); this
+//! crate is the format around them: the file read and written whole, its
+//! includes and images found through `format::files::Named` (wherever they
+//! are, regular files alone; embedded with **Embed Textures**), written
+//! images beside the document through `format::files::Beside`.
+use kinogaki_studio_api::format::files::{Beside, Named, replace};
+use kinogaki_studio_api::format::{materialx, options};
 use kinogaki_studio_api::params::Schema;
 use kinogaki_studio_api::{
-    DataTypeId, Error, FileFormat, FormatId, FormatOptions, FormatWriter, Imported, Input, Package,
-    PackageId, Purpose, Reading, Value, standard,
+    DataTypeId, Diagnostic, Error, FileFormat, FileItem, FormatId, FormatOptions, FormatWriter,
+    Imported, Input, Package, PackageId, Purpose, Reading, Value, Writing, standard,
 };
+use std::path::Path;
 use std::sync::LazyLock;
-
-/// The space a document's colors are in where it says none, and the one
-/// they are written in: MaterialX's working space.
-const DOCUMENT_SPACE: &str = "lin_rec709";
 
 /// The package's id.
 pub fn id() -> PackageId {
@@ -87,25 +53,84 @@ impl FileFormat for MaterialX {
         std::slice::from_ref(&*MATERIALS)
     }
     fn options(&self) -> FormatOptions {
-        FormatOptions::from([
-            (options::EMBED.to_owned(), Value::Bool(false)),
-            (options::OUTSIDE.to_owned(), Value::Bool(false)),
-        ])
+        FormatOptions::from([(options::EMBED.to_owned(), Value::Bool(false))])
     }
     fn schema(&self, chosen: &FormatOptions, _: Purpose) -> Schema {
-        let on = |name| options::option(chosen, name, Value::bool).unwrap_or(false);
-        let schema = options::embed(Schema::default(), on(options::EMBED));
-        options::outside(schema, on(options::OUTSIDE))
+        let on = options::option(chosen, options::EMBED, Value::bool).unwrap_or(false);
+        options::embed(Schema::default(), on)
     }
+    /// One materials item, named after the file.
     fn read(
         &self,
         input: &Input<'_>,
-        options: &FormatOptions,
+        chosen: &FormatOptions,
         reading: &Reading<'_>,
     ) -> Result<Imported, Error> {
-        read::read(input, options, reading)
+        reading.check()?;
+        let bytes = input.bytes()?;
+        let text = std::str::from_utf8(&bytes)
+            .map_err(|_| Error::invalid(format!("{input}: not UTF-8 text")))?;
+        let named = Named::new(input, chosen, reading);
+        let (materials, mut warnings) = materialx::read(text, input, &named, reading)?;
+        warnings.extend(named.warnings());
+        let name = Path::new(input.name())
+            .file_stem()
+            .map_or_else(|| "MaterialX".into(), |s| s.to_string_lossy());
+        let held = standard::Materials {
+            materials,
+            images: Vec::new(),
+        };
+        Ok(Imported {
+            items: vec![FileItem::top(name, standard::materials().wrap(held))],
+            warnings,
+        })
     }
     fn writer(&self) -> Option<&dyn FormatWriter> {
-        Some(&write::Writer)
+        Some(&Writer)
+    }
+}
+
+/// The format's writer.
+struct Writer;
+
+impl FormatWriter for Writer {
+    fn accepts(&self) -> &[DataTypeId] {
+        std::slice::from_ref(&*MATERIALS)
+    }
+
+    /// Every materials item's Materials in one document; the images lights
+    /// name have no place in one, and are said.
+    fn write(
+        &self,
+        path: &Path,
+        items: &[FileItem],
+        writing: &Writing<'_>,
+        _: &FormatOptions,
+    ) -> Result<Vec<Diagnostic>, Error> {
+        let mut materials = Vec::new();
+        let mut left = Vec::new();
+        for item in items {
+            writing.check()?;
+            let held = item
+                .data
+                .as_ref()
+                .and_then(|d| standard::materials().get(d));
+            let Some(held) = held else { continue };
+            materials.extend(&held.materials);
+            if !held.images.is_empty() {
+                let why = "the images lights name are left out: a document holds no lights";
+                left.push(Diagnostic::warning(why));
+            }
+        }
+        let (document, mut warnings) =
+            materialx::write(&materials, &mut Beside::new(path), writing)?;
+        let text = document.to_string();
+        let failed = |e: std::io::Error| Error::invalid(format!("{}: {e}", path.display()));
+        replace(path, |file| {
+            std::io::Write::write_all(file, text.as_bytes())
+        })
+        .map_err(failed)?;
+        warnings.extend(left);
+        Ok(warnings)
     }
 }

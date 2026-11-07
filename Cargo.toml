@@ -19,12 +19,13 @@ dbg_macro = "deny"
 todo = "deny"
 
 [dependencies]
+# The format contract, and MaterialX documents' materials as Studio's.
 kinogaki-studio-api = { path = "../../sdk/crates/api" }
-# Material networks: MaterialX's nodes as Studio holds them.
-kinogaki-render-api = { path = "../../sdk/crates/render-api" }
-# MaterialX documents: read, flattened and written.
-kinogaki-mtlx = { path = "../../sdk/crates/mtlx" }
 
 [dev-dependencies]
-# The SDK's color service that converts nothing.
+# The SDK's color service that converts nothing, and scratch folders.
 kinogaki-studio-api-testing = { path = "../../sdk/crates/api-testing" }
+# Material networks as an engine reads them, to check what was read.
+kinogaki-render-api = { path = "../../sdk/crates/render-api" }
+# MaterialX's library, to check written definitions.
+kinogaki-mtlx = { path = "../../sdk/crates/mtlx" }

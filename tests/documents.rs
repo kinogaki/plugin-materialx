@@ -8,7 +8,6 @@
 use kinogaki_materialx::MaterialX;
 use kinogaki_render_api::MaterialNetwork;
 use kinogaki_studio_api::color::ColorService;
-use kinogaki_studio_api::format::options;
 use kinogaki_studio_api::geometry::image::{EmbeddedFile, ImageColor, ImageFile, ImageSource};
 use kinogaki_studio_api::image_files::{IMAGE_NODE, image_node, image_source};
 use kinogaki_studio_api::network::{NetworkSeed, NewNode};
@@ -18,15 +17,8 @@ use kinogaki_studio_api::{
     Writing,
 };
 use kinogaki_studio_api_testing::Unconverted;
+use kinogaki_studio_api_testing::format::Scratch;
 use std::path::{Path, PathBuf};
-
-/// A folder of this test's own.
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("kinogaki-mtlx-{}-{name}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
-}
 
 /// The document at `path` read with `options` over the defaults, colors
 /// through `colors`.
@@ -112,7 +104,7 @@ fn the_examples_write_back_as_the_same_materials() {
     for example in examples() {
         let name = example.file_name().unwrap().to_owned();
         // Read and written in one folder, so the files they name are named alike.
-        let dir = scratch(&format!("example-{}", name.to_string_lossy()));
+        let dir = Scratch::new(&format!("example-{}", name.to_string_lossy()));
         let family = example.parent().unwrap();
         for file in std::fs::read_dir(family).unwrap() {
             let file = file.unwrap().path();
@@ -120,8 +112,7 @@ fn the_examples_write_back_as_the_same_materials() {
         }
         // MaterialX's repository keeps the examples' pictures three folders
         // up, outside the folder of the files naming them.
-        let outside = [(options::OUTSIDE, Value::Bool(true))];
-        let (held, said) = read_with(&dir.join(&name), &outside, &Unconverted);
+        let (held, said) = read(&dir.join(&name));
         // What MaterialX's examples hold that a Material doesn't.
         let expected = match &*name.to_string_lossy() {
             "standard_surface_chess_set.mtlx"
@@ -143,7 +134,7 @@ fn the_examples_write_back_as_the_same_materials() {
         let copy = dir.join("written.mtlx");
         let said = write_with(&copy, &held, Units::METERS, &Unconverted);
         assert!(said.is_empty(), "{name:?}: {said:?}");
-        let (again, _) = read_with(&copy, &outside, &Unconverted);
+        let (again, _) = read(&copy);
         same(&held, &again, &name.to_string_lossy());
         let text = std::fs::read_to_string(&copy).unwrap();
         let expected = written.join(&name);
@@ -163,7 +154,7 @@ fn the_examples_write_back_as_the_same_materials() {
 
 #[test]
 fn an_included_document_s_materials_and_definitions_read() {
-    let dir = scratch("include");
+    let dir = Scratch::new("include");
     let defs = r#"<?xml version="1.0"?>
 <materialx version="1.39">
   <nodedef name="ND_tinted" node="tinted">
@@ -239,7 +230,7 @@ impl ColorService for Doubled {
 
 #[test]
 fn colors_read_into_the_working_space_and_write_in_the_document_s() {
-    let dir = scratch("colors");
+    let dir = Scratch::new("colors");
     let document = r#"<?xml version="1.0"?>
 <materialx version="1.39" colorspace="lin_rec709">
   <open_pbr_surface name="surface" type="surfaceshader">
@@ -269,7 +260,7 @@ fn colors_read_into_the_working_space_and_write_in_the_document_s() {
 }
 
 /// A single-sided material whose Image nodes read a file (`dir`'s
-/// `maps/wood.png`, made here, in `srgb_texture`), an embedded file (raw)
+/// `maps/wood.png`, made here, in `srgb_texture`), an embedded file (data)
 /// and a result.
 fn oiled_wood(dir: &Path) -> Materials {
     std::fs::create_dir_all(dir.join("maps")).unwrap();
@@ -319,7 +310,7 @@ fn oiled_wood(dir: &Path) -> Materials {
 /// back, the same images.
 #[test]
 fn image_nodes_write_as_files_beside_the_document_and_read_back() {
-    let dir = scratch("images");
+    let dir = Scratch::new("images");
     let wood = dir.join("maps/wood.png");
     let path = dir.join("wood.mtlx");
     let said = write_with(&path, &oiled_wood(&dir), Units::METERS, &Unconverted);
@@ -333,7 +324,7 @@ fn image_nodes_write_as_files_beside_the_document_and_read_back() {
         "{text}"
     );
     assert!(
-        text.contains("value=\"wood_textures/rough.png\" colorspace=\"raw\""),
+        text.contains("value=\"wood_textures/rough.png\" colorspace=\"none\""),
         "{text}"
     );
     assert!(
@@ -429,7 +420,7 @@ fn glass() -> Materials {
 
 #[test]
 fn lengths_say_their_unit_and_read_into_the_projects() {
-    let dir = scratch("lengths");
+    let dir = Scratch::new("lengths");
     let millimetres = Units::new(0.001, kinogaki_studio_api::UpAxis::Y).unwrap();
     let centimetres = Units::new(0.01, kinogaki_studio_api::UpAxis::Y).unwrap();
     let path = dir.join("glass.mtlx");
@@ -461,7 +452,7 @@ fn lengths_say_their_unit_and_read_into_the_projects() {
 
 #[test]
 fn a_unit_on_a_node_holds_for_its_lengths_and_none_leaves_them_as_read() {
-    let dir = scratch("node-unit");
+    let dir = Scratch::new("node-unit");
     let document = |unit: &str| {
         format!(
             r#"<?xml version="1.0"?>
@@ -558,7 +549,7 @@ fn oracle(python: &std::ffi::OsStr, folders: &[&Path]) -> (bool, String) {
 fn hand_run_materialx_validates_every_document_the_format_writes() {
     let python = std::env::var_os("MATERIALX_PYTHON")
         .expect("MATERIALX_PYTHON: MaterialX's Python (Studio's tools/fetch_data.py)");
-    let dir = scratch("materialx");
+    let dir = Scratch::new("materialx");
     let millimetres = Units::new(0.001, kinogaki_studio_api::UpAxis::Y).unwrap();
     let documents = [
         ("wood", oiled_wood(&dir), Units::METERS),
