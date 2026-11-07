@@ -24,6 +24,12 @@
 //!   surface, as a Material shows one; any other material node shows itself.
 //!   Written, a surface shown alone is read by a `surfacematerial` named as
 //!   the Material.
+//! - **Lengths** (an input of a `Length`: glTF PBR's thickness, a
+//!   transmission depth) say their unit (`unittype="distance"
+//!   unit="millimeter"`): the project's, or metres where MaterialX names no
+//!   unit of its size. Read, a length the document says the unit of (on the
+//!   input, its node, its graph or the document) moves into the project's,
+//!   a texture's factor driving it too; one it says none of stays as read.
 //! - **Double Sided** is Kinogaki's `kinogaki:doublesided` on the material
 //!   node; the name a Material shows, its `uiname` where it isn't a valid
 //!   MaterialX name.

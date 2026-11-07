@@ -356,6 +356,129 @@ fn image_nodes_write_as_files_beside_the_document_and_read_back() {
     }
 }
 
+/// The document at `path` read into a project of `units`: its materials.
+fn read_in(path: &Path, units: Units) -> Materials {
+    let reading = Reading::new(Purpose::Objects, units, &Unconverted);
+    let read = MaterialX.read(&Input::file(path), &MaterialX.options(), &reading);
+    let read = read.unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let data = read.items[0].data.as_ref().expect("a value");
+    standard::materials().get(data).expect("materials").clone()
+}
+
+/// The value of input `input` of the node of MaterialX node `node` in
+/// `held`'s first material.
+fn held(held: &Materials, node: &str, input: &str) -> Value {
+    let seed = &held.materials[0].inside;
+    let found = (seed.nodes.iter()).find(|n| {
+        let signature = n.parameters.get("signature").and_then(Value::choice);
+        signature.is_some_and(|s| {
+            kinogaki_mtlx::library()
+                .def(s)
+                .is_some_and(|d| d.node == node)
+        })
+    });
+    found
+        .and_then(|n| n.parameters.get(input))
+        .cloned()
+        .unwrap()
+}
+
+#[test]
+fn lengths_say_their_unit_and_read_into_the_projects() {
+    let dir = scratch("lengths");
+    let millimetres = Units::new(0.001, kinogaki_studio_api::UpAxis::Y).unwrap();
+    let centimetres = Units::new(0.01, kinogaki_studio_api::UpAxis::Y).unwrap();
+    // glTF's thickness held, and OpenPBR's transmission depth a texture's
+    // factor drives, in millimetres.
+    let mut inside = NetworkSeed::default();
+    let surface = inside.node(
+        NewNode::materialx("ND_open_pbr_surface_surfaceshader")
+            .unwrap()
+            .with("subsurface_radius", 2.0)
+            .displayed(),
+    );
+    let depth = inside.node(
+        NewNode::materialx("ND_gltf_image_float_float_1_0")
+            .unwrap()
+            .with("factor", 3.0),
+    );
+    inside.wire(depth, "out", surface, "transmission_depth");
+    let glass = ImportedMaterial {
+        key: "Glass".into(),
+        name: "Glass".into(),
+        inside,
+        standard: None,
+        double_sided: true,
+    };
+    let held_mm = Materials {
+        materials: vec![glass],
+        images: Vec::new(),
+    };
+    let path = dir.join("glass.mtlx");
+    let items = [FileItem::top(
+        "Materials",
+        standard::materials().wrap(held_mm),
+    )];
+    let writer = MaterialX.writer().unwrap();
+    let writing = Writing::new(millimetres, &Unconverted);
+    (writer.write(&path, &items, &writing, &FormatOptions::new())).unwrap();
+    let text = std::fs::read_to_string(&path).unwrap();
+    for said in [
+        r#"name="subsurface_radius" type="float" value="2" unittype="distance" unit="millimeter""#,
+        r#"name="transmission_depth" type="float" nodename="#,
+    ] {
+        assert!(text.contains(said), "{said} in\n{text}");
+    }
+    // Read into centimetres: a tenth, the texture's factor too.
+    let back = read_in(&path, centimetres);
+    assert_eq!(
+        held(&back, "open_pbr_surface", "subsurface_radius"),
+        Value::Number(0.2)
+    );
+    let Value::Number(factor) = held(&back, "gltf_image", "factor") else {
+        panic!("a factor");
+    };
+    assert!((factor - 0.3).abs() < 1e-9, "{factor}");
+    // Read into millimetres: as written.
+    let back = read_in(&path, millimetres);
+    assert_eq!(
+        held(&back, "open_pbr_surface", "subsurface_radius"),
+        Value::Number(2.0)
+    );
+}
+
+#[test]
+fn a_unit_on_a_node_holds_for_its_lengths_and_none_leaves_them_as_read() {
+    let dir = scratch("node-unit");
+    let document = |unit: &str| {
+        format!(
+            r#"<?xml version="1.0"?>
+<materialx version="1.39">
+  <gltf_pbr name="glass" type="surfaceshader"{unit}>
+    <input name="thickness" type="float" value="2" />
+    <input name="ior" type="float" value="1.4" />
+  </gltf_pbr>
+  <surfacematerial name="Glass" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="glass" />
+  </surfacematerial>
+</materialx>
+"#
+        )
+    };
+    let millimetres = Units::new(0.001, kinogaki_studio_api::UpAxis::Y).unwrap();
+    let path = dir.join("said.mtlx");
+    std::fs::write(&path, document(r#" unittype="distance" unit="centimeter""#)).unwrap();
+    let back = read_in(&path, millimetres);
+    assert_eq!(held(&back, "gltf_pbr", "thickness"), Value::Number(20.0));
+    let Value::Number(ior) = held(&back, "gltf_pbr", "ior") else {
+        panic!("an index");
+    };
+    assert!((ior - 1.4).abs() < 1e-6, "no length: {ior}");
+    std::fs::write(&path, document("")).unwrap();
+    let back = read_in(&path, millimetres);
+    assert_eq!(held(&back, "gltf_pbr", "thickness"), Value::Number(2.0));
+}
+
 /// PLAN's budget: the whole example set reads in at most 50 ms (M4 Max,
 /// release).
 #[test]

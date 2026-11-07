@@ -14,6 +14,7 @@ One materials item, named after the file, which File ▸ Import makes a Material
 - **The shown node:** a material node holding only a surface shows that surface, as a Material shows one; any other (a displacement, a back surface) shows itself.
 - **Values** as the inputs hold them; colors converted from the space the document says (`colorspace`, its own or an enclosing element's; `lin_rec709` where none says) into the project's working space.
 - **Files:** each `filename` value an Image node wired into its input, one per distinct file and color space in a material: its path (with `fileprefix`) relative to the document's folder, embedded with **Embed Textures**; its `colorspace` the Image node's Color (none: Auto; `raw`: Data; another: that space). A `<UDIM>` set reads as the one file it names, said.
+- **Lengths** (glTF PBR's thickness, a transmission depth: the inputs the SDK holds as lengths) are written in the project's unit, said on each (`unittype="distance" unit="millimeter"`; metres where MaterialX names no unit of the project's size). Read, a length whose unit the document says (on the input, its node, its graph or the document) moves into the project's, a glTF texture's factor driving it too; one it says none of stays as read.
 - **Double Sided:** Kinogaki's `kinogaki:doublesided="false"` on the material node; double sided where nothing says.
 - **Left out, said:** looks and their material assignments (they bind materials to geometry a document alone doesn't have), a node no definition resolves (what it fed holds its own value), a value its input can't hold.
 
@@ -44,6 +45,7 @@ One document of every Material the materials item holds:
 - MaterialX's example materials (`tests/fixtures/examples`, 1.39.5's `resources/Materials/Examples`, the `.mtlx` files alone, Apache-2.0: [LICENSE](tests/fixtures/examples/LICENSE)) read, written and read again as the same materials (every input at its value, the defaults' too), each written as `tests/fixtures/written` holds (`MTLX_WRITTEN=write cargo test` writes them again);
 - an included document's definitions and a missing one;
 - colors into the working space and back;
+- lengths written in millimetres saying their unit and read into centimetres (a texture's factor too), a unit said on a node, and a document saying none;
 - Image nodes reading a file, an embedded file and a result, written and read back as the same images, with and without Embed Textures.
 
 `tools/materialx_oracle.py` reads every example and its written document with MaterialX 1.39.5's own Python module, validates the written one, and compares them material by material (every node a material reads through its graphs, by category, definition and values, names aside). It runs locally and is never a dependency.

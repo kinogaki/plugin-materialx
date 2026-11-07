@@ -1,7 +1,7 @@
 //! Materials as a MaterialX document (the crate docs say how).
 use crate::{DOCUMENT_SPACE, MATERIALS};
 use kinogaki_mtlx::{Bound, Document, Material, MaterialNode, Type, library};
-use kinogaki_render_api::material::mtlx::{SIGNATURE, of_value};
+use kinogaki_render_api::material::mtlx::{SIGNATURE, is_length, of_value};
 use kinogaki_studio_api::color::ColorService;
 use kinogaki_studio_api::format::files::Beside;
 use kinogaki_studio_api::geometry::image::ImageColor;
@@ -11,6 +11,8 @@ use kinogaki_studio_api::standard::{self, ImportedMaterial};
 use kinogaki_studio_api::{
     DataTypeId, Diagnostic, Error, FileItem, FormatOptions, FormatWriter, Value, Writing,
 };
+use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 pub(crate) struct Writer;
@@ -30,9 +32,17 @@ impl FormatWriter for Writer {
         _: &FormatOptions,
     ) -> Result<Vec<Diagnostic>, Error> {
         let mut files = Beside::new(path);
+        // Lengths in the project's unit where MaterialX names it, else in
+        // metres.
+        let metres = writing.units.meters_per_unit();
+        let unit = match library().distance_unit(metres) {
+            Some(unit) => (unit, 1.0),
+            None => ("meter", metres),
+        };
         let mut write = Write {
             files: &mut files,
             colors: writing.colors,
+            unit,
             said: Vec::new(),
         };
         let mut materials = Vec::new();
@@ -67,6 +77,9 @@ impl FormatWriter for Writer {
 struct Write<'a> {
     files: &'a mut Beside,
     colors: &'a dyn ColorService,
+    /// The distance unit lengths are written in, and what takes them there
+    /// from the project's.
+    unit: (&'static str, f64),
     said: Vec<String>,
 }
 
@@ -93,6 +106,14 @@ impl Write<'_> {
                 return Ok(None);
             }
         };
+        let (unit, by) = self.unit;
+        let mut seed = Cow::Borrowed(seed);
+        if by != 1.0 && seed.to_mut().scale_lengths(by) > 0 {
+            self.said.push(format!(
+                "{}: lengths driven by textures keep the project's unit",
+                m.name
+            ));
+        }
         let mut nodes = Vec::new();
         let mut at = vec![None; seed.nodes.len()];
         for (n, node) in seed.nodes.iter().enumerate() {
@@ -129,6 +150,7 @@ impl Write<'_> {
                 name,
                 def: def.clone(),
                 inputs,
+                units: BTreeMap::new(),
             });
         }
         for wire in &seed.wires {
@@ -166,6 +188,13 @@ impl Write<'_> {
             };
             nodes[to].inputs.push((wire.input.clone(), bound));
         }
+        // Every length says its unit, held or driven.
+        for node in &mut nodes {
+            let lengths = (node.inputs.iter()).filter(|(input, _)| is_length(&node.def, input));
+            node.units = lengths
+                .map(|(input, _)| (input.clone(), unit.to_owned()))
+                .collect();
+        }
         // The shown node, read by a Surface Material where it is a surface.
         let shown = seed
             .nodes
@@ -191,6 +220,7 @@ impl Write<'_> {
                     name: m.name.clone(),
                     def: def.clone(),
                     inputs: vec![("surfaceshader".into(), surface)],
+                    units: BTreeMap::new(),
                 });
                 nodes.len() - 1
             }

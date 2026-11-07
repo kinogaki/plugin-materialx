@@ -17,7 +17,7 @@
       <input name="in" type="vector3" nodename="normal2" />
     </normalmap>
     <standard_surface name="Bishop_B" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse2" />
       <input name="metalness" type="float" nodename="metallic2" />
       <input name="specular_roughness" type="float" nodename="roughness2" />
@@ -48,7 +48,7 @@
       <input name="in" type="vector3" nodename="normal3" />
     </normalmap>
     <standard_surface name="Bishop_W" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse3" />
       <input name="metalness" type="float" nodename="metallic3" />
       <input name="specular_roughness" type="float" nodename="roughness3" />
@@ -79,7 +79,7 @@
       <input name="in" type="vector3" nodename="normal6" />
     </normalmap>
     <standard_surface name="Castle_B" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse6" />
       <input name="metalness" type="float" nodename="metallic6" />
       <input name="specular_roughness" type="float" nodename="roughness6" />
@@ -110,7 +110,7 @@
       <input name="in" type="vector3" nodename="normal7" />
     </normalmap>
     <standard_surface name="Castle_W" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse7" />
       <input name="metalness" type="float" nodename="metallic7" />
       <input name="specular_roughness" type="float" nodename="roughness7" />
@@ -141,7 +141,7 @@
       <input name="in" type="vector3" nodename="mtlximage15" />
     </normalmap>
     <standard_surface name="Chessboard" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="mtlximage13" />
       <input name="metalness" type="float" nodename="mtlximage16" />
       <input name="specular_roughness" type="float" nodename="mtlximage17" />
@@ -175,7 +175,7 @@
       <input name="in" type="vector3" nodename="mtlximage6" />
     </normalmap>
     <standard_surface name="King_B" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="mtlximage1" />
       <input name="metalness" type="float" nodename="mtlximage2" />
       <input name="specular_roughness" type="float" nodename="mtlximage4" />
@@ -210,7 +210,7 @@
       <input name="in" type="vector3" nodename="mtlximage9" />
     </normalmap>
     <standard_surface name="King_W" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="mtlximage7" />
       <input name="metalness" type="float" nodename="mtlximage10" />
       <input name="specular_roughness" type="float" nodename="mtlximage11" />
@@ -239,7 +239,7 @@
       <input name="in" type="vector3" nodename="normal4" />
     </normalmap>
     <standard_surface name="Knight_B" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse4" />
       <input name="specular_roughness" type="float" nodename="roughness4" />
       <input name="subsurface_color" type="color3" nodename="diffuse4" />
@@ -266,7 +266,7 @@
       <input name="in" type="vector3" nodename="normal5" />
     </normalmap>
     <standard_surface name="Knight_W" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse5" />
       <input name="specular_roughness" type="float" nodename="roughness5" />
       <input name="subsurface_color" type="color3" nodename="diffuse5" />
@@ -296,7 +296,7 @@
       <input name="in" type="vector3" nodename="normal9" />
     </normalmap>
     <standard_surface name="Pawn_Body_B" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse9" />
       <input name="metalness" type="float" nodename="metallic9" />
       <input name="specular_roughness" type="float" nodename="roughness9" />
@@ -327,7 +327,7 @@
       <input name="in" type="vector3" nodename="normal8" />
     </normalmap>
     <standard_surface name="Pawn_Body_W" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse8" />
       <input name="metalness" type="float" nodename="metallic8" />
       <input name="specular_roughness" type="float" nodename="roughness8" />
@@ -355,7 +355,7 @@
       <input name="base_color" type="color3" value="1, 1, 1" />
       <input name="transmission" type="float" value="1" />
       <input name="transmission_color" type="color3" value="0.2995, 0.5, 0.450276" />
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="specular_roughness" type="float" nodename="mtlximage19" />
       <input name="normal" type="vector3" nodename="mtlxnormalmap14" />
     </standard_surface>
@@ -379,7 +379,7 @@
       <input name="base_color" type="color3" value="1, 1, 1" />
       <input name="transmission" type="float" value="1" />
       <input name="transmission_color" type="color3" value="1, 1, 0.828" />
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="specular_roughness" type="float" nodename="mtlximage21" />
       <input name="normal" type="vector3" nodename="mtlxnormalmap15" />
     </standard_surface>
@@ -409,7 +409,7 @@
       <input name="in" type="vector3" nodename="normal" />
     </normalmap>
     <standard_surface name="Queen_B" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.003" />
+      <input name="subsurface_scale" type="float" value="0.003" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse" />
       <input name="metalness" type="float" nodename="metallic" />
       <input name="specular_roughness" type="float" nodename="roughness" />
@@ -444,7 +444,7 @@
       <input name="in" type="vector3" nodename="normal1" />
     </normalmap>
     <standard_surface name="Queen_W" type="surfaceshader">
-      <input name="subsurface_scale" type="float" value="0.001" />
+      <input name="subsurface_scale" type="float" value="0.001" unittype="distance" unit="meter" />
       <input name="base_color" type="color3" nodename="diffuse1" />
       <input name="metalness" type="float" nodename="metallic1" />
       <input name="specular_roughness" type="float" nodename="roughness1" />

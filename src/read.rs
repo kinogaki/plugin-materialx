@@ -1,6 +1,6 @@
 //! A document's materials as Studio's (the crate docs say how).
 use crate::DOCUMENT_SPACE;
-use kinogaki_mtlx::{Bound, Document, Included, Material, Type};
+use kinogaki_mtlx::{Bound, Document, Included, Material, Type, library};
 use kinogaki_render_api::material::Input as Port;
 use kinogaki_render_api::material::mtlx::{def, value};
 use kinogaki_studio_api::color::ColorService;
@@ -41,6 +41,7 @@ pub(crate) fn read(
     let mut read = Read {
         named: &named,
         colors: reading.colors,
+        metres: reading.units.meters_per_unit(),
         said,
     };
     let materials = materials.iter().map(|m| read.material(m)).collect();
@@ -90,6 +91,9 @@ struct Read<'a> {
     /// The files the document names, which its images are read through.
     named: &'a Named,
     colors: &'a dyn ColorService,
+    /// The project's metres a unit, which lengths a document says the unit
+    /// of are converted into.
+    metres: f64,
     /// What was left out or approximated, in words.
     said: Vec<String>,
 }
@@ -196,12 +200,38 @@ impl Read<'_> {
                 }
             }
         }
+        self.lengths(m, &made, &mut seed);
         ImportedMaterial {
             key: m.name.clone(),
             name: m.label.clone().unwrap_or_else(|| m.name.clone()),
             inside: seed,
             standard: None,
             double_sided: m.double_sided,
+        }
+    }
+
+    /// `seed`'s lengths (`made` the node each of `m`'s became) from the
+    /// distance unit the document says each is in into the project's;
+    /// those it says none of stay as read.
+    fn lengths(&mut self, m: &Material, made: &[Option<usize>], seed: &mut NetworkSeed) {
+        let mut units = vec![None; seed.nodes.len()];
+        for (node, at) in m.nodes.iter().zip(made) {
+            if let Some(at) = at {
+                units[*at] = Some(&node.units);
+            }
+        }
+        let unconverted = seed.scale_lengths_by(|at, input| {
+            let unit = units[at].and_then(|units| units.get(input));
+            match unit.and_then(|unit| library().unit(unit)) {
+                Some(("distance", metres)) => metres / self.metres,
+                _ => 1.0,
+            }
+        });
+        if unconverted > 0 {
+            self.said.push(format!(
+                "{}: {unconverted} lengths driven by textures keep the document's unit",
+                m.name
+            ));
         }
     }
 
