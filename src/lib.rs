@@ -16,7 +16,6 @@ use kinogaki_studio_api::{
     Imported, Input, Package, PackageId, Purpose, Reading, Value, Writing, standard,
 };
 use std::path::Path;
-use std::sync::LazyLock;
 
 /// The package's id.
 pub fn id() -> PackageId {
@@ -34,7 +33,7 @@ pub fn package() -> Package {
 }
 
 /// What it reads and writes: materials.
-static MATERIALS: LazyLock<DataTypeId> = LazyLock::new(|| standard::materials().id());
+const MATERIALS: &[DataTypeId] = &[standard::materials().id()];
 
 /// The format.
 pub struct MaterialX;
@@ -50,7 +49,7 @@ impl FileFormat for MaterialX {
         &["mtlx"]
     }
     fn produces(&self) -> &[DataTypeId] {
-        std::slice::from_ref(&*MATERIALS)
+        MATERIALS
     }
     fn options(&self) -> FormatOptions {
         FormatOptions::from([(options::EMBED.to_owned(), Value::Bool(false))])
@@ -95,7 +94,7 @@ struct Writer;
 
 impl FormatWriter for Writer {
     fn accepts(&self) -> &[DataTypeId] {
-        std::slice::from_ref(&*MATERIALS)
+        MATERIALS
     }
 
     /// Every materials item's Materials in one document; the images lights
