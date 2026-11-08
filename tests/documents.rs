@@ -8,7 +8,8 @@
 use kinogaki_materialx::MaterialX;
 use kinogaki_render_api::MaterialNetwork;
 use kinogaki_studio_api::color::ColorService;
-use kinogaki_studio_api::geometry::image::{EmbeddedFile, ImageColor, ImageFile, ImageSource};
+use kinogaki_studio_api::geometry::EmbeddedFile;
+use kinogaki_studio_api::geometry::image::{ImageColor, ImageFile, ImageSource};
 use kinogaki_studio_api::image_files::{IMAGE_NODE, image_node, image_source};
 use kinogaki_studio_api::network::{NetworkSeed, NewNode};
 use kinogaki_studio_api::standard::{self, ImportedMaterial, Materials};
