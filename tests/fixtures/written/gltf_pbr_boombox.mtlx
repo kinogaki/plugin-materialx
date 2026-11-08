@@ -5,10 +5,10 @@
       <input name="file" type="filename" value="boombox/BoomBox_baseColor.png" colorspace="srgb_texture" />
     </gltf_colorimage>
     <gltf_image name="image_orm" type="vector3">
-      <input name="file" type="filename" value="boombox/BoomBox_occlusionRoughnessMetallic.png" />
+      <input name="file" type="filename" value="boombox/BoomBox_occlusionRoughnessMetallic.png" colorspace="none" />
     </gltf_image>
     <gltf_normalmap name="image_normal" type="vector3">
-      <input name="file" type="filename" value="boombox/BoomBox_normal.png" />
+      <input name="file" type="filename" value="boombox/BoomBox_normal.png" colorspace="none" />
     </gltf_normalmap>
     <gltf_image name="image_emission" type="color3">
       <input name="file" type="filename" value="boombox/BoomBox_emissive.png" colorspace="srgb_texture" />

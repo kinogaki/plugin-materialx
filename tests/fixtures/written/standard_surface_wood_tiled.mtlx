@@ -7,7 +7,7 @@
     </tiledimage>
     <tiledimage name="image_roughness" type="float">
       <input name="uvtiling" type="vector2" value="4, 4" />
-      <input name="file" type="filename" value="../../../Images/wood_roughness.jpg" />
+      <input name="file" type="filename" value="../../../Images/wood_roughness.jpg" colorspace="none" />
     </tiledimage>
     <standard_surface name="SR_wood1" type="surfaceshader">
       <input name="specular" type="float" value="0.4" />

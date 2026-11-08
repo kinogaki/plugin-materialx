@@ -86,27 +86,27 @@
       <input name="in" type="float" value="3" />
     </convert>
     <tiledimage name="node_tiledimage_vector3_27" type="vector3">
-      <input name="file" type="filename" value="../../../Images/brick_normal.jpg" />
+      <input name="file" type="filename" value="../../../Images/brick_normal.jpg" colorspace="none" />
       <input name="uvtiling" type="vector2" nodename="node_convert_1" />
     </tiledimage>
     <tiledimage name="node_tiledimage_float_22" type="float">
-      <input name="file" type="filename" value="../../../Images/brick_roughness.jpg" />
+      <input name="file" type="filename" value="../../../Images/brick_roughness.jpg" colorspace="none" />
       <input name="uvtiling" type="vector2" nodename="node_convert_1" />
     </tiledimage>
     <tiledimage name="node_tiledimage_float_10" type="float">
-      <input name="file" type="filename" value="../../../Images/brick_mask.jpg" />
+      <input name="file" type="filename" value="../../../Images/brick_mask.jpg" colorspace="none" />
       <input name="uvtiling" type="vector2" nodename="node_convert_1" />
     </tiledimage>
     <tiledimage name="node_tiledimage_float_7" type="float">
-      <input name="file" type="filename" value="../../../Images/brick_base_gray.jpg" />
+      <input name="file" type="filename" value="../../../Images/brick_base_gray.jpg" colorspace="none" />
       <input name="uvtiling" type="vector2" nodename="node_convert_1" />
     </tiledimage>
     <tiledimage name="node_tiledimage_float_26" type="float">
-      <input name="file" type="filename" value="../../../Images/brick_variation_mask.jpg" />
+      <input name="file" type="filename" value="../../../Images/brick_variation_mask.jpg" colorspace="none" />
       <input name="uvtiling" type="vector2" nodename="node_convert_1" />
     </tiledimage>
     <tiledimage name="node_tiledimage_float_24" type="float">
-      <input name="file" type="filename" value="../../../Images/brick_dirt_mask.jpg" />
+      <input name="file" type="filename" value="../../../Images/brick_dirt_mask.jpg" colorspace="none" />
       <input name="uvtiling" type="vector2" nodename="node_convert_1" />
     </tiledimage>
     <standard_surface name="N_StandardSurface" type="surfaceshader">

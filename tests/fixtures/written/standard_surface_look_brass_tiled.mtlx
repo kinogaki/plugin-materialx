@@ -5,7 +5,7 @@
       <input name="file" type="filename" value="../../../Images/brass_color.jpg" colorspace="srgb_texture" />
     </tiledimage>
     <tiledimage name="image_roughness" type="float">
-      <input name="file" type="filename" value="../../../Images/brass_roughness.jpg" />
+      <input name="file" type="filename" value="../../../Images/brass_roughness.jpg" colorspace="none" />
     </tiledimage>
     <standard_surface name="SR_brass1" type="surfaceshader">
       <input name="base_color" type="color3" value="1, 1, 1" />
