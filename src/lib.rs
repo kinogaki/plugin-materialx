@@ -75,10 +75,7 @@ impl FileFormat for MaterialX {
         let name = Path::new(input.name())
             .file_stem()
             .map_or_else(|| "MaterialX".into(), |s| s.to_string_lossy());
-        let held = standard::Materials {
-            materials,
-            images: Vec::new(),
-        };
+        let held = standard::Materials { materials };
         Ok(Imported {
             items: vec![FileItem::top(name, standard::materials().wrap(held))],
             warnings,
@@ -107,7 +104,6 @@ impl FormatWriter for Writer {
         _: &FormatOptions,
     ) -> Result<Vec<Diagnostic>, Error> {
         let mut materials = Vec::new();
-        let mut left = Vec::new();
         for item in items {
             writing.check()?;
             let held = item
@@ -116,20 +112,14 @@ impl FormatWriter for Writer {
                 .and_then(|d| standard::materials().get(d));
             let Some(held) = held else { continue };
             materials.extend(&held.materials);
-            if !held.images.is_empty() {
-                let why = "the images lights name are left out: a document holds no lights";
-                left.push(Diagnostic::warning(why));
-            }
         }
-        let (document, mut warnings) =
-            materialx::write(&materials, &mut Beside::new(path), writing)?;
+        let (document, warnings) = materialx::write(&materials, &mut Beside::new(path), writing)?;
         let text = document.to_string();
         let failed = |e: std::io::Error| Error::invalid(format!("{}: {e}", path.display()));
         replace(path, |file| {
             std::io::Write::write_all(file, text.as_bytes())
         })
         .map_err(failed)?;
-        warnings.extend(left);
         Ok(warnings)
     }
 }

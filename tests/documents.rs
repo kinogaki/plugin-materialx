@@ -299,10 +299,7 @@ fn oiled_wood(dir: &Path) -> Materials {
         standard: None,
         double_sided: false,
     };
-    Materials {
-        materials: vec![m],
-        images: Vec::new(),
-    }
+    Materials { materials: vec![m] }
 }
 
 /// Wave 4.5: a material's Image nodes reading a file, an embedded file and
@@ -415,7 +412,6 @@ fn glass() -> Materials {
     };
     Materials {
         materials: vec![glass],
-        images: Vec::new(),
     }
 }
 
@@ -516,7 +512,6 @@ fn kinogaki_definitions() -> Materials {
     };
     Materials {
         materials: vec![material("Phong", phong), material("Cutout", cutout)],
-        images: Vec::new(),
     }
 }
 
