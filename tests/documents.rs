@@ -18,7 +18,7 @@ use kinogaki_studio_api::{
     Writing,
 };
 use kinogaki_studio_api_testing::Unconverted;
-use kinogaki_studio_api_testing::format::Scratch;
+use kinogaki_studio_api_testing::format::{Scratch, document};
 use std::path::{Path, PathBuf};
 
 /// The document at `path` read with `options` over the defaults, colors
@@ -95,6 +95,22 @@ fn examples() -> Vec<PathBuf> {
     }
     found.sort();
     found
+}
+
+/// File ▸ Open reads a document of materials as Import does: it states no
+/// units, so its lengths are the project's.
+#[test]
+fn a_document_opens_as_import_reads_it() {
+    for path in examples() {
+        let input = Input::file(&path);
+        let opened = document(&MaterialX, &input, &MaterialX.options());
+        assert!(opened.is_ok(), "{}: {opened:?}", path.display());
+        let reading = Reading::new(Purpose::Document, Units::MILLIMETERS, &Unconverted);
+        let read = MaterialX
+            .read(&input, &MaterialX.options(), &reading)
+            .unwrap();
+        assert_eq!(read.units, None, "{}", path.display());
+    }
 }
 
 #[test]

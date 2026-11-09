@@ -2,6 +2,7 @@
 # Written by `python3 tools/check_all.py --inventory`; every check compares its tests with it.
 kinogaki-materialx/documents hand hand_run_materialx_validates_every_document_the_format_writes
 kinogaki-materialx/documents hand hand_run_the_examples_read_within_their_budget
+kinogaki-materialx/documents test a_document_opens_as_import_reads_it
 kinogaki-materialx/documents test a_unit_on_a_node_holds_for_its_lengths_and_none_leaves_them_as_read
 kinogaki-materialx/documents test an_included_document_s_materials_and_definitions_read
 kinogaki-materialx/documents test colors_read_into_the_working_space_and_write_in_the_document_s
